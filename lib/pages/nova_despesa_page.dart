@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import '../services/api_service.dart';
+import '../database/database_helper.dart';
+import '../model/despesa.dart';
 
 class NovaDespesaPage extends StatefulWidget {
   final Map<String, dynamic>? despesaAtual;
@@ -17,6 +19,7 @@ class _NovaDespesaPageState extends State<NovaDespesaPage> {
   final _formKey = GlobalKey<FormState>();
   final _descricaoCtrl = TextEditingController();
   final _valorCtrl = TextEditingController();
+  final _db = DatabaseHelper();
 
   List<dynamic> _categorias = [];
   List<dynamic> _veiculos = [];
@@ -52,8 +55,19 @@ class _NovaDespesaPageState extends State<NovaDespesaPage> {
   Future<void> _carregarDados() async {
     setState(() => _carregando = true);
     try {
-      final categorias = await ApiService.listarCategorias();
-      final veiculos = await ApiService.listarVeiculos();
+      List<dynamic> categorias = [];
+      List<dynamic> veiculos = [];
+
+      try {
+        categorias = await ApiService.listarCategorias();
+        veiculos = await ApiService.listarVeiculos();
+        await _db.salvarCategorias(categorias);
+        await _db.salvarVeiculos(veiculos);
+      } catch (_) {
+        categorias = await _db.listarCategorias();
+        veiculos = await _db.listarVeiculos();
+      }
+
       setState(() {
         _categorias = categorias;
         _veiculos = veiculos;
@@ -215,24 +229,60 @@ class _NovaDespesaPageState extends State<NovaDespesaPage> {
     setState(() => _salvando = true);
 
     try {
-      String fotoUrl;
+      final categoriaNome = _categorias.firstWhere(
+            (c) => c['id'] == _categoriaSelecionada,
+        orElse: () => {'nome': ''},
+      )['nome'];
 
-      if (_fotoXFile != null) {
-        final bytes = await _fotoXFile!.readAsBytes();
-        fotoUrl = await ApiService.uploadFoto(bytes, _fotoXFile!.name);
-      } else {
-        fotoUrl = widget.despesaAtual!['foto_url'];
+      final veiculoPlaca = _veiculoSelecionado != null
+          ? _veiculos.firstWhere(
+            (v) => v['id'] == _veiculoSelecionado,
+        orElse: () => {'placa': ''},
+      )['placa']
+          : null;
+
+      try {
+        String fotoUrl;
+        if (_fotoXFile != null) {
+          final bytes = await _fotoXFile!.readAsBytes();
+          fotoUrl = await ApiService.uploadFoto(bytes, _fotoXFile!.name);
+        } else {
+          fotoUrl = widget.despesaAtual!['foto_url'];
+        }
+
+        await ApiService.criarDespesa({
+          'descricao': _descricaoCtrl.text.trim(),
+          'valor': double.parse(_valorCtrl.text.trim().replaceAll(',', '.')),
+          'categoria_id': _categoriaSelecionada,
+          'veiculo_id': _veiculoSelecionado,
+          'foto_url': fotoUrl,
+          'data_despesa':
+          '${_data.year}-${_data.month.toString().padLeft(2, '0')}-${_data.day.toString().padLeft(2, '0')}',
+        });
+      } catch (_) {
+        // Sem internet — salva localmente
+        final despesaLocal = Despesa(
+          descricao: _descricaoCtrl.text.trim(),
+          valor: double.parse(_valorCtrl.text.trim().replaceAll(',', '.')),
+          categoria: categoriaNome,
+          fotoPath: _fotoXFile?.path ?? widget.despesaAtual!['foto_url'],
+          veiculo: veiculoPlaca,
+          categoriaId: _categoriaSelecionada,
+          veiculoId: _veiculoSelecionado,
+          data: _data,
+          sincronizado: false,
+        );
+        await _db.inserir(despesaLocal);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Sem internet. Despesa salva localmente e será sincronizada em breve.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
       }
-
-      await ApiService.criarDespesa({
-        'descricao': _descricaoCtrl.text.trim(),
-        'valor': double.parse(_valorCtrl.text.trim().replaceAll(',', '.')),
-        'categoria_id': _categoriaSelecionada,
-        'veiculo_id': _veiculoSelecionado,
-        'foto_url': fotoUrl,
-        'data_despesa':
-        '${_data.year}-${_data.month.toString().padLeft(2, '0')}-${_data.day.toString().padLeft(2, '0')}',
-      });
 
       if (mounted) Navigator.pop(context, true);
     } catch (e) {

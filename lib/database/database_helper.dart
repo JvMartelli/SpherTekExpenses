@@ -13,7 +13,6 @@ class DatabaseHelper {
   DatabaseHelper._interno();
   factory DatabaseHelper() => _instance;
 
-  // ── SQLite (Android/Windows) ─────────────────────────────
   Future<Database> get database async {
     _database ??= await _inicializar();
     return _database!;
@@ -36,15 +35,18 @@ class DatabaseHelper {
             status         TEXT    NOT NULL DEFAULT 'pendente',
             motivoRejeicao TEXT,
             data           TEXT    NOT NULL,
-            sincronizado   INTEGER NOT NULL DEFAULT 0
+            sincronizado   INTEGER NOT NULL DEFAULT 0,
+            categoriaId    TEXT,
+            veiculoId      TEXT
           )
         ''');
       },
     );
   }
 
-  // ── SharedPreferences (Web) ──────────────────────────────
   static const _chaveWeb = 'despesas';
+  static const _chaveCategorias = 'categorias_cache';
+  static const _chaveVeiculos = 'veiculos_cache';
 
   Future<void> _salvarListaWeb(List<Despesa> lista) async {
     final prefs = await SharedPreferences.getInstance();
@@ -58,7 +60,33 @@ class DatabaseHelper {
     return jsonList.map((s) => Despesa.fromMap(jsonDecode(s))).toList();
   }
 
-  // ── CRUD (detecta plataforma automaticamente) ────────────
+  // ── Cache de categorias e veículos ───────────────────────
+
+  Future<void> salvarCategorias(List<dynamic> categorias) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_chaveCategorias, jsonEncode(categorias));
+  }
+
+  Future<List<dynamic>> listarCategorias() async {
+    final prefs = await SharedPreferences.getInstance();
+    final json = prefs.getString(_chaveCategorias);
+    if (json == null) return [];
+    return jsonDecode(json);
+  }
+
+  Future<void> salvarVeiculos(List<dynamic> veiculos) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_chaveVeiculos, jsonEncode(veiculos));
+  }
+
+  Future<List<dynamic>> listarVeiculos() async {
+    final prefs = await SharedPreferences.getInstance();
+    final json = prefs.getString(_chaveVeiculos);
+    if (json == null) return [];
+    return jsonDecode(json);
+  }
+
+  // ── CRUD despesas ────────────────────────────────────────
 
   Future<int> inserir(Despesa d) async {
     if (kIsWeb) {
@@ -96,11 +124,42 @@ class DatabaseHelper {
   }
 
   Future<List<Despesa>> listar() async {
-    if (kIsWeb) {
-      return _listarWeb();
-    }
+    if (kIsWeb) return _listarWeb();
     final db = await database;
     final rows = await db.query('despesas', orderBy: 'data DESC');
     return rows.map(Despesa.fromMap).toList();
+  }
+
+  Future<List<Despesa>> listarNaoSincronizadas() async {
+    if (kIsWeb) {
+      final lista = await _listarWeb();
+      return lista.where((d) => !d.sincronizado).toList();
+    }
+    final db = await database;
+    final rows = await db.query(
+      'despesas',
+      where: 'sincronizado = ?',
+      whereArgs: [0],
+    );
+    return rows.map(Despesa.fromMap).toList();
+  }
+
+  Future<void> marcarSincronizado(int id) async {
+    if (kIsWeb) {
+      final lista = await _listarWeb();
+      final index = lista.indexWhere((d) => d.id == id);
+      if (index != -1) {
+        lista[index].sincronizado = true;
+        await _salvarListaWeb(lista);
+      }
+      return;
+    }
+    final db = await database;
+    await db.update(
+      'despesas',
+      {'sincronizado': 1},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
   }
 }

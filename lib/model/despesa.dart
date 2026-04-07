@@ -6,9 +6,11 @@ class Despesa {
   String descricao;
   double valor;
   String categoria;
-  String fotoPath;   // obrigatória
+  String fotoPath;
   String? veiculo;
-  String status;     // pendente, aprovada, rejeitada
+  String? categoriaId;
+  String? veiculoId;
+  String status;
   String? motivoRejeicao;
   DateTime data;
   bool sincronizado;
@@ -20,6 +22,8 @@ class Despesa {
     required this.categoria,
     required this.fotoPath,
     this.veiculo,
+    this.categoriaId,
+    this.veiculoId,
     this.status = 'pendente',
     this.motivoRejeicao,
     required this.data,
@@ -33,9 +37,9 @@ class Despesa {
 
   String get statusLabel {
     switch (status) {
-      case 'aprovada':   return 'Aprovada';
-      case 'rejeitada':  return 'Rejeitada';
-      default:           return 'Pendente';
+      case 'aprovada':  return 'Aprovada';
+      case 'rejeitada': return 'Rejeitada';
+      default:          return 'Pendente';
     }
   }
 
@@ -54,6 +58,8 @@ class Despesa {
     'categoria': categoria,
     'fotoPath': fotoPath,
     'veiculo': veiculo,
+    'categoriaId': categoriaId,
+    'veiculoId': veiculoId,
     'status': status,
     'motivoRejeicao': motivoRejeicao,
     'data': data.toIso8601String(),
@@ -67,6 +73,8 @@ class Despesa {
     categoria: map['categoria'],
     fotoPath: map['fotoPath'],
     veiculo: map['veiculo'],
+    categoriaId: map['categoriaId'],
+    veiculoId: map['veiculoId'],
     status: map['status'] ?? 'pendente',
     motivoRejeicao: map['motivoRejeicao'],
     data: DateTime.parse(map['data']),

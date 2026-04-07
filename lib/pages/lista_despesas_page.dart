@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../database/database_helper.dart';
+import '../services/sync_service.dart';
 import 'login_page.dart';
 import 'nova_despesa_page.dart';
 import 'detalhe_despesa_page.dart';
@@ -19,48 +21,31 @@ class _ListaDespesasPageState extends State<ListaDespesasPage> {
   void initState() {
     super.initState();
     _carregar();
+    SyncService.monitorar(() {
+      if (mounted) _carregar();
+    });
   }
 
   Future<void> _carregar() async {
     setState(() => _carregando = true);
     try {
       _despesas = await ApiService.listarDespesas();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro ao carregar: $e'), backgroundColor: Colors.red),
-        );
-      }
+    } catch (_) {
+      final locais = await DatabaseHelper().listar();
+      _despesas = locais.map((d) => {
+        'id': d.id,
+        'descricao': d.descricao,
+        'valor': d.valor,
+        'status': d.status,
+        'foto_url': d.fotoPath,
+        'data_despesa':
+        '${d.data.year}-${d.data.month.toString().padLeft(2, '0')}-${d.data.day.toString().padLeft(2, '0')}',
+        'categorias': {'nome': d.categoria},
+        'veiculos': d.veiculo != null ? {'placa': d.veiculo} : null,
+        'sincronizado': d.sincronizado,
+      }).toList();
     } finally {
       if (mounted) setState(() => _carregando = false);
-    }
-  }
-
-  Future<void> _excluir(Map<String, dynamic> despesa) async {
-    final confirmar = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Row(children: [
-          Icon(Icons.warning, color: Colors.orange),
-          SizedBox(width: 8),
-          Text('Atenção'),
-        ]),
-        content: Text('Excluir "${despesa['descricao']}"?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Excluir', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-    if (confirmar == true) {
-      await ApiService.deletarDespesa(despesa['id']);
-      _carregar();
     }
   }
 
@@ -141,6 +126,7 @@ class _ListaDespesasPageState extends State<ListaDespesasPage> {
             final categoria = d['categorias']?['nome'] ?? '';
             final veiculo = d['veiculos']?['placa'];
             final cor = _corStatus(status);
+            final sincronizado = d['sincronizado'] == true || d['sincronizado'] == 1;
 
             return Card(
               child: InkWell(
@@ -185,6 +171,12 @@ class _ListaDespesasPageState extends State<ListaDespesasPage> {
                                   style: const TextStyle(
                                       color: Colors.grey,
                                       fontSize: 12)),
+                            if (!sincronizado)
+                              const Text(
+                                  '⏳ Aguardando sincronização',
+                                  style: TextStyle(
+                                      color: Colors.orange,
+                                      fontSize: 11)),
                           ],
                         ),
                       ),
@@ -218,7 +210,8 @@ class _ListaDespesasPageState extends State<ListaDespesasPage> {
                           const SizedBox(height: 4),
                           Row(
                             children: [
-                              if (status == 'rejeitada')
+                              if (status == 'rejeitada' ||
+                                  status == 'pendente')
                                 GestureDetector(
                                   onTap: () async {
                                     await Navigator.push(
@@ -235,15 +228,6 @@ class _ListaDespesasPageState extends State<ListaDespesasPage> {
                                       color: Colors.orange,
                                       size: 20),
                                 ),
-                              if (status == 'rejeitada')
-                                const SizedBox(width: 6),
-                              GestureDetector(
-                                onTap: () => _excluir(d),
-                                child: const Icon(
-                                    Icons.delete_outline,
-                                    color: Colors.red,
-                                    size: 20),
-                              ),
                             ],
                           ),
                         ],

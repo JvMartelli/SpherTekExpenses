@@ -97,17 +97,15 @@ export class DespesasService {
   }
 
   async deletar(id: string, empresa_id: string) {
-    const { data, error } = await this.supabase
+    const { error } = await this.supabase
       .getClient()
       .from('despesas')
       .delete()
       .eq('id', id)
-      .eq('empresa_id', empresa_id)
-      .select()
-      .single();
+      .eq('empresa_id', empresa_id);
 
     if (error) throw new Error(error.message);
-    return data;
+    return { success: true };
   }
 
   async sincronizar(empresa_id: string, usuario_id: string, despesas: any[]) {

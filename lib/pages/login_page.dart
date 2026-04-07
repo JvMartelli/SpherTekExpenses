@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 import 'lista_despesas_page.dart';
 
@@ -17,10 +18,20 @@ class _LoginPageState extends State<LoginPage> {
   String? _erro;
 
   @override
-  void dispose() {
-    _emailCtrl.dispose();
-    _senhaCtrl.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    _verificarSessao();
+  }
+
+  Future<void> _verificarSessao() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+    if (token != null && mounted) {
+      ApiService.setToken(token);
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const ListaDespesasPage()),
+      );
+    }
   }
 
   Future<void> _entrar() async {
@@ -35,7 +46,13 @@ class _LoginPageState extends State<LoginPage> {
         _senhaCtrl.text.trim(),
       );
 
-      ApiService.setToken(resultado['access_token']);
+      final token = resultado['access_token'];
+      ApiService.setToken(token);
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('token', token);
+      await prefs.setString('email', _emailCtrl.text.trim());
+      await prefs.setString('senha', _senhaCtrl.text.trim());
 
       if (mounted) {
         Navigator.of(context).pushReplacement(
@@ -43,10 +60,30 @@ class _LoginPageState extends State<LoginPage> {
         );
       }
     } catch (e) {
-      setState(() => _erro = 'E-mail ou senha incorretos');
+      final prefs = await SharedPreferences.getInstance();
+      final emailSalvo = prefs.getString('email');
+      final senhaSalva = prefs.getString('senha');
+
+      if (emailSalvo == _emailCtrl.text.trim() &&
+          senhaSalva == _senhaCtrl.text.trim()) {
+        if (mounted) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const ListaDespesasPage()),
+          );
+        }
+      } else {
+        setState(() => _erro = 'E-mail ou senha incorretos');
+      }
     } finally {
       if (mounted) setState(() => _carregando = false);
     }
+  }
+
+  @override
+  void dispose() {
+    _emailCtrl.dispose();
+    _senhaCtrl.dispose();
+    super.dispose();
   }
 
   @override

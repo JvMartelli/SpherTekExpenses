@@ -65,7 +65,7 @@ export class DespesasController {
   }
 
   @Delete(':id')
-  @Roles('motorista', 'administrador')
+  @Roles('financeiro', 'administrador')
   async deletar(@Param('id') id: string, @Request() req) {
     return this.despesasService.deletar(id, req.user.empresa_id);
   }

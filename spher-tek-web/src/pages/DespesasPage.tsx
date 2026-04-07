@@ -54,6 +54,12 @@ export default function DespesasPage() {
     carregar();
   }
 
+  async function excluir(id: string) {
+    if (!confirm('Tem certeza que deseja excluir esta despesa?')) return;
+    await api.delete(`/despesas/${id}`);
+    carregar();
+  }
+
   function corStatus(status: string) {
     switch (status) {
       case 'aprovada': return 'bg-green-100 text-green-800';
@@ -134,22 +140,30 @@ export default function DespesasPage() {
                     )}
                   </td>
                   <td className="px-6 py-4 text-center">
-                    {d.status === 'pendente' && (
-                      <div className="flex gap-2 justify-center">
-                        <button
-                          onClick={() => aprovar(d.id)}
-                          className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-lg text-xs font-medium"
-                        >
-                          Aprovar
-                        </button>
-                        <button
-                          onClick={() => setDespesaSelecionada(d)}
-                          className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-lg text-xs font-medium"
-                        >
-                          Rejeitar
-                        </button>
-                      </div>
-                    )}
+                    <div className="flex gap-2 justify-center items-center">
+                      {d.status === 'pendente' && (
+                        <>
+                          <button
+                            onClick={() => aprovar(d.id)}
+                            className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-lg text-xs font-medium"
+                          >
+                            Aprovar
+                          </button>
+                          <button
+                            onClick={() => setDespesaSelecionada(d)}
+                            className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-lg text-xs font-medium"
+                          >
+                            Rejeitar
+                          </button>
+                        </>
+                      )}
+                      <button
+                        onClick={() => excluir(d.id)}
+                        className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1 rounded-lg text-xs font-medium"
+                      >
+                        Excluir
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -158,7 +172,6 @@ export default function DespesasPage() {
         </div>
       )}
 
-      {/* Modal rejeição */}
       {despesaSelecionada && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-xl">
@@ -188,7 +201,6 @@ export default function DespesasPage() {
         </div>
       )}
 
-      {/* Modal foto */}
       {modalFoto && (
         <div
           className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 cursor-pointer"
