@@ -215,7 +215,14 @@ class _NovaDespesaPageState extends State<NovaDespesaPage> {
     setState(() => _salvando = true);
 
     try {
-      final fotoUrl = _fotoXFile?.path ?? widget.despesaAtual!['foto_url'];
+      String fotoUrl;
+
+      if (_fotoXFile != null) {
+        final bytes = await _fotoXFile!.readAsBytes();
+        fotoUrl = await ApiService.uploadFoto(bytes, _fotoXFile!.name);
+      } else {
+        fotoUrl = widget.despesaAtual!['foto_url'];
+      }
 
       await ApiService.criarDespesa({
         'descricao': _descricaoCtrl.text.trim(),
@@ -223,14 +230,17 @@ class _NovaDespesaPageState extends State<NovaDespesaPage> {
         'categoria_id': _categoriaSelecionada,
         'veiculo_id': _veiculoSelecionado,
         'foto_url': fotoUrl,
-        'data_despesa': '${_data.year}-${_data.month.toString().padLeft(2, '0')}-${_data.day.toString().padLeft(2, '0')}',
+        'data_despesa':
+        '${_data.year}-${_data.month.toString().padLeft(2, '0')}-${_data.day.toString().padLeft(2, '0')}',
       });
 
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro ao salvar: $e'), backgroundColor: Colors.red),
+          SnackBar(
+              content: Text('Erro ao salvar: $e'),
+              backgroundColor: Colors.red),
         );
       }
     } finally {

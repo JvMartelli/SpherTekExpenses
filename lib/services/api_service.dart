@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 
 class ApiService {
@@ -25,6 +26,31 @@ class ApiService {
       return jsonDecode(response.body);
     }
     throw Exception('E-mail ou senha incorretos');
+  }
+
+  static Future<String> uploadFoto(Uint8List bytes, String nomeArquivo) async {
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('$_baseUrl/upload/foto'),
+    );
+
+    request.headers['Authorization'] = 'Bearer $_token';
+
+    request.files.add(
+      http.MultipartFile.fromBytes(
+        'foto',
+        bytes,
+        filename: nomeArquivo,
+      ),
+    );
+
+    final response = await request.send();
+    final body = await response.stream.bytesToString();
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return jsonDecode(body)['url'];
+    }
+    throw Exception('Erro ao fazer upload da foto');
   }
 
   static Future<List<dynamic>> listarCategorias() async {
