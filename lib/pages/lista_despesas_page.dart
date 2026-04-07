@@ -1,8 +1,5 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
-import '../database/database_helper.dart';
-import '../model/despesa.dart';
+import '../services/api_service.dart';
 import 'login_page.dart';
 import 'nova_despesa_page.dart';
 import 'detalhe_despesa_page.dart';
@@ -15,8 +12,7 @@ class ListaDespesasPage extends StatefulWidget {
 }
 
 class _ListaDespesasPageState extends State<ListaDespesasPage> {
-  final _db = DatabaseHelper();
-  List<Despesa> _despesas = [];
+  List<dynamic> _despesas = [];
   bool _carregando = true;
 
   @override
@@ -28,7 +24,7 @@ class _ListaDespesasPageState extends State<ListaDespesasPage> {
   Future<void> _carregar() async {
     setState(() => _carregando = true);
     try {
-      _despesas = await _db.listar();
+      _despesas = await ApiService.listarDespesas();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -40,7 +36,7 @@ class _ListaDespesasPageState extends State<ListaDespesasPage> {
     }
   }
 
-  Future<void> _excluir(Despesa despesa) async {
+  Future<void> _excluir(Map<String, dynamic> despesa) async {
     final confirmar = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
@@ -49,7 +45,7 @@ class _ListaDespesasPageState extends State<ListaDespesasPage> {
           SizedBox(width: 8),
           Text('Atenção'),
         ]),
-        content: Text('Excluir "${despesa.descricao}"?'),
+        content: Text('Excluir "${despesa['descricao']}"?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -63,8 +59,24 @@ class _ListaDespesasPageState extends State<ListaDespesasPage> {
       ),
     );
     if (confirmar == true) {
-      await _db.deletar(despesa.id!);
+      await ApiService.deletarDespesa(despesa['id']);
       _carregar();
+    }
+  }
+
+  Color _corStatus(String status) {
+    switch (status) {
+      case 'aprovada':  return const Color(0xFF2E7D32);
+      case 'rejeitada': return const Color(0xFFC62828);
+      default:          return const Color(0xFFE65100);
+    }
+  }
+
+  String _labelStatus(String status) {
+    switch (status) {
+      case 'aprovada':  return 'Aprovada';
+      case 'rejeitada': return 'Rejeitada';
+      default:          return 'Pendente';
     }
   }
 
@@ -107,9 +119,13 @@ class _ListaDespesasPageState extends State<ListaDespesasPage> {
             Icon(Icons.receipt_long, size: 72, color: Colors.grey),
             SizedBox(height: 16),
             Text('Nenhuma despesa lançada',
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Colors.grey)),
+                style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey)),
             SizedBox(height: 8),
-            Text('Toque no + para adicionar', style: TextStyle(color: Colors.grey)),
+            Text('Toque no + para adicionar',
+                style: TextStyle(color: Colors.grey)),
           ],
         ),
       )
@@ -120,7 +136,12 @@ class _ListaDespesasPageState extends State<ListaDespesasPage> {
           itemCount: _despesas.length,
           separatorBuilder: (_, __) => const SizedBox(height: 4),
           itemBuilder: (_, i) {
-            final d = _despesas[i];
+            final d = _despesas[i] as Map<String, dynamic>;
+            final status = d['status'] ?? 'pendente';
+            final categoria = d['categorias']?['nome'] ?? '';
+            final veiculo = d['veiculos']?['placa'];
+            final cor = _corStatus(status);
+
             return Card(
               child: InkWell(
                 borderRadius: BorderRadius.circular(12),
@@ -137,56 +158,59 @@ class _ListaDespesasPageState extends State<ListaDespesasPage> {
                   padding: const EdgeInsets.all(12),
                   child: Row(
                     children: [
-                      // Foto miniatura
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: SizedBox(
-                          width: 56,
-                          height: 56,
-                          child: kIsWeb
-                              ? Image.network(d.fotoPath, fit: BoxFit.cover)
-                              : Image.file(File(d.fotoPath), fit: BoxFit.cover),
-                        ),
+                      CircleAvatar(
+                        backgroundColor:
+                        const Color(0xFF1565C0).withOpacity(0.1),
+                        child: Icon(_iconeCategoria(categoria),
+                            color: const Color(0xFF1565C0)),
                       ),
                       const SizedBox(width: 12),
-
-                      // Dados
                       Expanded(
                         child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                          crossAxisAlignment:
+                          CrossAxisAlignment.start,
                           children: [
-                            Text(d.descricao,
-                                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                            Text(d['descricao'] ?? '',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 15)),
                             const SizedBox(height: 2),
-                            Text('${d.categoria}  •  ${d.dataFormatada}',
-                                style: const TextStyle(color: Colors.grey, fontSize: 13)),
-                            if (d.veiculo != null)
-                              Text('🚗 ${d.veiculo}',
-                                  style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                            Text(
+                                '$categoria  •  ${d['data_despesa'] ?? ''}',
+                                style: const TextStyle(
+                                    color: Colors.grey,
+                                    fontSize: 13)),
+                            if (veiculo != null)
+                              Text('🚗 $veiculo',
+                                  style: const TextStyle(
+                                      color: Colors.grey,
+                                      fontSize: 12)),
                           ],
                         ),
                       ),
-
-                      // Valor + status + ações
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          Text(d.valorFormatado,
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 15,
-                                  color: Color(0xFF1565C0))),
+                          Text(
+                            'R\$ ${double.tryParse(d['valor'].toString())?.toStringAsFixed(2) ?? '0,00'}',
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                                color: Color(0xFF1565C0)),
+                          ),
                           const SizedBox(height: 4),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
-                              color: d.statusCor.withOpacity(0.12),
-                              borderRadius: BorderRadius.circular(12),
+                              color: cor.withOpacity(0.12),
+                              borderRadius:
+                              BorderRadius.circular(12),
                             ),
                             child: Text(
-                              d.statusLabel,
+                              _labelStatus(status),
                               style: TextStyle(
-                                  color: d.statusCor,
+                                  color: cor,
                                   fontSize: 11,
                                   fontWeight: FontWeight.bold),
                             ),
@@ -194,25 +218,31 @@ class _ListaDespesasPageState extends State<ListaDespesasPage> {
                           const SizedBox(height: 4),
                           Row(
                             children: [
-                              // Botão corrigir (só rejeitadas)
-                              if (d.status == 'rejeitada')
+                              if (status == 'rejeitada')
                                 GestureDetector(
                                   onTap: () async {
                                     await Navigator.push(
                                       context,
                                       MaterialPageRoute(
-                                        builder: (_) => NovaDespesaPage(despesaAtual: d),
+                                        builder: (_) =>
+                                            NovaDespesaPage(
+                                                despesaAtual: d),
                                       ),
                                     );
                                     _carregar();
                                   },
-                                  child: const Icon(Icons.edit, color: Colors.orange, size: 20),
+                                  child: const Icon(Icons.edit,
+                                      color: Colors.orange,
+                                      size: 20),
                                 ),
-                              if (d.status == 'rejeitada') const SizedBox(width: 6),
-                              // Botão excluir
+                              if (status == 'rejeitada')
+                                const SizedBox(width: 6),
                               GestureDetector(
                                 onTap: () => _excluir(d),
-                                child: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                                child: const Icon(
+                                    Icons.delete_outline,
+                                    color: Colors.red,
+                                    size: 20),
                               ),
                             ],
                           ),

@@ -33,9 +33,7 @@ class ApiService {
       headers: _headers,
     );
 
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    }
+    if (response.statusCode == 200) return jsonDecode(response.body);
     throw Exception('Erro ao buscar categorias');
   }
 
@@ -45,9 +43,7 @@ class ApiService {
       headers: _headers,
     );
 
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    }
+    if (response.statusCode == 200) return jsonDecode(response.body);
     throw Exception('Erro ao buscar veículos');
   }
 
@@ -70,10 +66,19 @@ class ApiService {
       headers: _headers,
     );
 
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    }
+    if (response.statusCode == 200) return jsonDecode(response.body);
     throw Exception('Erro ao buscar despesas');
+  }
+
+  static Future<void> deletarDespesa(String id) async {
+    final response = await http.delete(
+      Uri.parse('$_baseUrl/despesas/$id'),
+      headers: _headers,
+    );
+
+    if (response.statusCode != 200 && response.statusCode != 204) {
+      throw Exception('Erro ao deletar despesa');
+    }
   }
 
   static Future<void> sincronizar(List<Map<String, dynamic>> despesas) async {

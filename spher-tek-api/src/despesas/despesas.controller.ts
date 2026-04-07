@@ -5,6 +5,7 @@ import {
   Body,
   Param,
   Patch,
+  Delete,
   UseGuards,
   Request,
   Query,
@@ -53,5 +54,10 @@ export class DespesasController {
     @Request() req,
   ) {
     return this.despesasService.rejeitar(id, req.user.empresa_id, body.motivo);
+  }
+
+  @Delete(':id')
+  async deletar(@Param('id') id: string, @Request() req) {
+    return this.despesasService.deletar(id, req.user.empresa_id);
   }
 }
