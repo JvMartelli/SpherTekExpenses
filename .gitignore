@@ -1,0 +1,78 @@
+# =========================
+# Flutter / Dart
+# =========================
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
+build/
+coverage/
+
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# =========================
+# Android
+# =========================
+android/.gradle/
+android/local.properties
+android/app/debug/
+android/app/profile/
+android/app/release/
+.gradle/
+
+# Keystore (NUNCA subir)
+*.jks
+*.keystore
+key.properties
+
+# =========================
+# iOS
+# =========================
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/Flutter/.last_build_id
+
+# =========================
+# IDEs
+# =========================
+.idea/
+*.iml
+.vscode/
+
+# =========================
+# Sistema
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# Logs / Temporários
+# =========================
+*.log
+*.pyc
+*.swp
+.build/
+.buildlog/
+.history
+*.lock
+
+# =========================
+# Arquivos sensíveis
+# =========================
+.env
+*.env.*
+
+# =========================
+# Opcional (app Flutter)
+# =========================
+pubspec.lock
+
+# Node / Backend
+node_modules/
+dist/
+
+# Flutter local
+.metadata
