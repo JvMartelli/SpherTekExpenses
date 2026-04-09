@@ -3,7 +3,7 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  static const String _baseUrl = 'http://localhost:3000';
+  static const String _baseUrl = 'https://sphertekexpenses-production.up.railway.app';
   static String? _token;
 
   static void setToken(String token) {
