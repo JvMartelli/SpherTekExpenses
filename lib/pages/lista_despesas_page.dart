@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 import '../database/database_helper.dart';
 import '../services/sync_service.dart';
@@ -49,6 +50,19 @@ class _ListaDespesasPageState extends State<ListaDespesasPage> {
     }
   }
 
+  Future<void> _logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('token');
+    await prefs.remove('email');
+    await prefs.remove('senha');
+    ApiService.setToken('');
+    if (mounted) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const LoginPage()),
+      );
+    }
+  }
+
   Color _corStatus(String status) {
     switch (status) {
       case 'aprovada':  return const Color(0xFF2E7D32);
@@ -88,9 +102,7 @@ class _ListaDespesasPageState extends State<ListaDespesasPage> {
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Sair',
-            onPressed: () => Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (_) => const LoginPage()),
-            ),
+            onPressed: _logout,
           ),
         ],
       ),

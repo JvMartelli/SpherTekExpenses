@@ -5,7 +5,7 @@ import { SupabaseService } from '../supabase/supabase.service';
 export class DespesasService {
   constructor(private supabase: SupabaseService) {}
 
-  async listar(empresa_id: string, status?: string) {
+  async listar(empresa_id: string, status?: string, usuario_id?: string, perfil?: string) {
     let query = this.supabase
       .getClient()
       .from('despesas')
@@ -17,6 +17,11 @@ export class DespesasService {
       `)
       .eq('empresa_id', empresa_id)
       .order('criado_em', { ascending: false });
+
+    // Motorista só vê as próprias despesas
+    if (perfil === 'motorista') {
+      query = query.eq('usuario_id', usuario_id);
+    }
 
     if (status) {
       query = query.eq('status', status);

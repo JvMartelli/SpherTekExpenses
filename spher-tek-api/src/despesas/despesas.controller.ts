@@ -23,7 +23,12 @@ export class DespesasController {
   @Get()
   @Roles('financeiro', 'administrador', 'motorista')
   async listar(@Request() req, @Query('status') status?: string) {
-    return this.despesasService.listar(req.user.empresa_id, status);
+    return this.despesasService.listar(
+      req.user.empresa_id,
+      status,
+      req.user.id,
+      req.user.perfil,
+    );
   }
 
   @Get(':id')
